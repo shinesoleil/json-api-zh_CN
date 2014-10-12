@@ -1,0 +1,31 @@
+url: http://jsonapi.org
+safe: true
+lsi: false
+source: .
+destination: ./public
+exclude:
+  - Rakefile
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - CNAME
+  - .gitignore
+  - ./public
+  - ./stylesheets/*.scss
+markdown: redcarpet
+pygments: false
+port: 9876
+
+navigation:
+- title: Overview
+  url: /
+- title: Format
+  url: /format/
+- title: Extending
+  url: /extending/
+- title: Examples
+  url: /examples/
+- title: FAQ
+  url: /faq/
+- title: About
+  url: /about/
