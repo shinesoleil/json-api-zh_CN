@@ -192,7 +192,7 @@ URL 模板可以使用IDs来获取关联资源，如下所示。
 
 #### 资源关联 <a href="#document-structure-resource-relationships" id="document-structure-resource-relationships" class="headerlink"></a>
 
-`"linkes"`键的值是一个表示链接资源的JSON对象，通过关联名索引。
+`"links"`键的值是一个表示链接资源的JSON对象，通过关联名索引。
 
 举例来说，下面的post与一个`author`和一个`comments`集合相关联：
 
@@ -362,7 +362,7 @@ Letter"`的comments.
 
 在这个示例中，处理每个post`"links"`区块内的特定数组，以扩展`posts.comments`变量。URI模板规范 [[RFC6570](https://tools.ietf.org/html/rfc6570)]声明默认处理方式，使用%编码（即`encodeURIComponent()` javascript原生方法）编码每一个元素，然后用逗号连接。在这个示例中，请求`http://example.com/comments/1,2,3,4` ，将会获取一个`comments`列表。
 
-顶层 `"linkes"`对象具有以下行为:
+顶层 `"links"`对象具有以下行为:
 
 * 每个键使用点分隔路径，指向重复的关联。路径以特定资源类型名开头，遍历相关的资源。举例来  说，`"posts.comments"`指向每个`"posts"`对象的`"comments"`关联.
 * 每个键的值作为URL模板处理。
