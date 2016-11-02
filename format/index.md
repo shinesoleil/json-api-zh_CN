@@ -773,180 +773,132 @@ Content-Type: application/vnd.api+json
 
 服务器与客户端必须依照HTTP的语义准备和解译响应。
 
+
 ### 更新资源 <a href="#crud-updating" id="crud-updating" class="headerlink"></a>
 
-支持资源更新的服务器必须支持单个资源的更新，可以选择性的支持单次请求更新多个资源。
+向表示资源的URL发出`PATCH`请求，即可进行资源更新。
 
-向表示单独资源或多个单独资源的URL发出`PUT`请求，即可进行资源更新。
+资源的URL可以从资源对象的`self`的值获得。或者,当`GET`请求返回了一个资源对象作为主资源,
+同样的请求URL可被用来更新资源。
 
-#### 更新单独资源 <a href="#crud-updating-individual-resources" id="crud-updating-individual-resources" class="headerlink"></a>
+`PATCH`请求必须包括一个资源对象作为主资源。资源对象必须包含`type`和`id`成员。
 
-为更新单独资源，向表示资源的URL发出`PUT`请求。请求必须包含一个顶层资源对象。
-
-例如：
+比如:
 
 ```javascript
-PUT /articles/1
+PATCH /articles/1 HTTP/1.1
 Content-Type: application/vnd.api+json
 Accept: application/vnd.api+json
 
 {
-  "articles": {
+  "data": {
+    "type": "articles",
     "id": "1",
-    "title": "To TDD or Not"
-  }
-}
-```
-
-#### 更新多个资源<a href="#crud-updating-multiple-resources" id="crud-updating-multiple-resources" class="headerlink"></a>
-
-向表示多个单独资源（不是全部的资源集合）的URL发出`PUT`请求，即可更新多个资源。请求必须包含顶层资源对象集合，且每个资源具有`“id"`元素。
-
-例如：
-
-```javascript
-PUT /articles/1,2
-Content-Type: application/vnd.api+json
-Accept: application/vnd.api+json
-
-{
-  "articles": [{
-    "id": "1",
-    "title": "To TDD or Not"
-  }, {
-    "id": "2",
-    "title": "LOL Engineering"
-  }]
-}
-```
-
-#### 更新属性 <a href="#crud-updating-attributes" id="crud-updating-attributes" class="headerlink"></a>
-
-要更新资源的一个或多个属性，主要资源对象应该只包括待更新的属性。资源对象缺省的属性将不会更新。
-
-例如，下面的`PUT`请求，仅会更新article的`title`和`text`属性。
-
-```javascript
-PUT /articles/1
-Content-Type: application/vnd.api+json
-Accept: application/vnd.api+json
-
-{
-  "articles": {
-    "id": "1",
-    "title": "To TDD or Not",
-    "text": "TLDR; It's complicated... but check your test coverage regardless."
-  }
-}
-```
-
-#### 更新关联 <a href="#crud-updating-relationships" id="crud-updating-relationships" class="headerlink"></a>
-
-##### 更新单对象关联 <a href="#crud-updating-to-one-relationships" id="crud-updating-to-one-relationships" class="headerlink"></a>
-
-单对象关联更新，可以在`PUT`请求资源对象中包含`links`键，从而与其它属性一起更新。
-
-例如，下面的`PUT`请求将会更新article的`title`和`author`属性：
-
-```javascript
-PUT /articles/1
-Content-Type: application/vnd.api+json
-Accept: application/vnd.api+json
-
-{
-  "articles": {
-    "title": "Rails is a Melting Pot",
-    "links": {
-      "author": "1"
+    "attributes": {
+      "title": "To TDD or Not"
     }
   }
 }
 ```
 
-若要移除单对象关联，指定`null`作为值即可。
+#### 更新资源属性 <a href="#crud-updating-resources-attributes" id="crud-updating-resources-attributes" class="headerlink"></a>
 
-另外，单对象关联也可以通过它的关联URL访问。
+资源的任何一个,或者所有属性,可能被包括在`PATCH`请求的资源对象中。
 
-向关联URL发出带有主要资源的`POST`请求，即可添加单对象关联。
+如果请求不包括资源所有的属性,那么服务器解译请求时必须添加这些属性,并赋予当前的值。
+服务器不能给缺失的属性赋值为null。
 
-例如：
+比如,下面的`PATCH`请求被解译为只更新`title`和`text`两个属性:
 
 ```javascript
-POST /articles/1/links/author
+PATCH /articles/1 HTTP/1.1
 Content-Type: application/vnd.api+json
 Accept: application/vnd.api+json
 
 {
-  "people": "12"
-}
-```
-
-向关联URL发出`DELETE`请求，即可删除单对象关联。例如：
-
-```text
-DELETE /articles/1/links/author
-```
-
-##### 更新多关联对象 <a href="#crud-updating-to-many-relationships" id="crud-updating-to-many-relationships" class="headerlink"></a>
-
-更新多对象关联，可以在`PUT`请求中资源对象包含`links`键，从而与其它属性一起更新。
-
-例如，下面`PUT`请求完全替换article的`tags`。
-
-```javascript
-PUT /articles/1
-Content-Type: application/vnd.api+json
-Accept: application/vnd.api+json
-
-{
-  "articles": {
+  "data": {
+    "type": "articles",
     "id": "1",
-    "title": "Rails is a Melting Pot",
-    "links": {
-      "tags": ["2", "3"]
+    "attributes": {
+      "title": "To TDD or Not",
+      "text": "TLDR; It's complicated... but check your test coverage regardless."
     }
   }
 }
 ```
 
-若要移除多对象关联，指定空数组`[]`为值即可。
+#### 更新资源关联 <a href="#crud-updating-resource-relationships" id="crud-updating-resource-relationships" class="headerlink"></a>
 
-在分布式系统中，完全替换一个数据集合并不总是合适。替换方案是允许单独的添加或移除关联。
+资源的所有或者任何一个关联都可能包括在`PATCH`请求的资源对象中。
 
-为促进细化访问，多对象关联也可以通过关联URL访问。
+如果一个请求不包括资源所有的关联,那么服务器解译请求时必须添加这些属性,并赋予当前的值。
+服务器不能给缺失的属性赋值为null或者为空。
 
-向关联URL发出带有主要资源的`POST`请求，即可添加多对象关联。
+如果关联是被`PATCH`请求的资源对象中`relationships`给出的,那么它的值必须是一个有`data`成员的关联对象。
+关联的值将被这个成员定义的值代替。
 
-```text
-POST /articles/1/links/comments
+比如,下面的`PATCH`请求将会更新`author`关联:
+
+```javascript
+PATCH /articles/1 HTTP/1.1
 Content-Type: application/vnd.api+json
 Accept: application/vnd.api+json
 
 {
-  "comments": ["1", "2"]
+  "data": {
+    "type": "articles",
+    "id": "1",
+    "relationships": {
+      "author": {
+        "data": { "type": "people", "id": "1" }
+      }
+    }
+  }
 }
 ```
 
-向关联URL发出`DELETE`请求，即可删除多对象对象关联。例如：
-```text
-DELETE /articles/1/links/tags/1
+相似的,下面的`PATCH`请求会更新整个`tags`关联:
+
+```javascript
+PATCH /articles/1 HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": {
+    "type": "articles",
+    "id": "1",
+    "relationships": {
+      "tags": {
+        "data": [
+          { "type": "tags", "id": "2" },
+          { "type": "tags", "id": "3" }
+        ]
+      }
+    }
+  }
+}
 ```
 
-向关联URL发出`DELETE`请求，即可删除多个多对象对象关联。例如：
-
-```text
-DELETE /articles/1/links/tags/1,2
-```
+服务器可能拒绝更新多对象关联的请求。在这种情况,服务器必须阻止整个更新,并返回`403 Forbidden`状态码。
 
 ### 响应 <a href="#crud-updating-responses" id="crud-updating-responses" class="headerlink"></a>
 
-#### 204 No Content <a href="#crud-updating-responses-204" id="crud-updating-responses-204" class="headerlink"></a>
+#### 202 Accepted <a href="#crud-updating-responses-202" id="crud-updating-responses-202" class="headerlink"></a>
 
-如果更新成功，且客户端属性保持最新，服务器必须返回`204 No Content`状态码。适用于`PUT`请求，以及仅调整links，不涉及其它属性的`POST`, `DELETE`请求。
+如果服务器接受更新,但在服务器响应时更新并未完成,那么服务器必须返回`202 Accepted`状态码。
 
 #### 200 OK <a href="#crud-updating-responses-200" id="crud-updating-responses-200" class="headerlink"></a>
 
 如果服务器接受更新，但是在请求指定内容之外做了资源修改，必须响应`200 OK`以及更新的资源实例，像是向此URL发出`GET`请求。
+
+如果更新成功,客户端当前属性保持更新,并且服务器只响应最上层元数据,那么服务器必须返回`200 OK`状态码。
+这种情况下,服务器不能包括更新后的资源。
+
+#### 204 No Content <a href="#crud-updating-responses-204" id="crud-updating-responses-204" class="headerlink"></a>
+
+如果更新成功，且服务器没有更新任何未提供的属性，那么服务器必须或者返回`200 OK`状态码和响应文档,或者只返回`204 No Content`状态码,没有响应文档。
+
 
 #### 其它响应 <a href="#crud-updating-responses-other" id="crud-updating-responses-other" class="headerlink"></a>
 
@@ -957,24 +909,39 @@ DELETE /articles/1/links/tags/1,2
 向资源URL发出`DELETE`请求即可删除单个资源。
 
 ```text
-DELETE /photos/1
-```
-
-服务器可以选择性的支持，在一个请求里删除多个资源。
-
-```text
-DELETE /photos/1,2,3
+DELETE /photos/1 HTTP/1.1
+Accept: application/vnd.api+json
 ```
 
 #### 响应 <a href="#crud-deleting-responses" id="crud-deleting-responses" class="headerlink"></a>
 
+##### 202 Accepted <a href="#crud-deleting-responses-202" id="crud-deleting-responses-202" class="headerlink"></a>
+
+如果删除资源的请求被接受处理,但在服务器响应时处理并未完成,那么服务器必须返回`202 Accepted`状态码。
+
 ##### 204 No Content <a href="#crud-deleting-responses-204" id="crud-deleting-responses-204" class="headerlink"></a>
 
-如果删除请求成功，服务器必须返回`204 No Content` 状态码。
+如果删除请求成功，服务器必须返回`204 No Content` 状态码,并且没有返回内容
+
+##### 200 OK <a href="#crud-deleting-responses-200" id="crud-deleting-responses-200" class="headerlink"></a>
+
+如果删除请求成功,服务器必须返回`200 OK`状态码,并且返回上层的元数据。
+
+##### 404 NOT FOUND <a href="#crud-deleting-responses-404" id="crud-deleting-responses-404" class="headerlink"></a>
+
+如果因为资源不存在,删除请求失败,那么服务器应该返回`404 Not Found`状态码。
 
 ##### 其它响应 <a href="#crud-deleting-responses-other" id="crud-deleting-responses-other" class="headerlink"></a>
 
-服务器使用其它HTTP错误状态码反映错误。客户端必须依据HTTP规范处理这些错误信息。如下所述，错误细节可能会一并返回。
+服务器使用其它HTTP错误状态码反映错误。
+
+服务器可能响应包括错误详情的错误响应。
+
+服务器与客户端必须依照HTTP的语义准备和解译响应。
+
+## Query Parameters
+
+
 
 ## Errors <a href="#errors" id="errors" class="headerlink"></a>
 
@@ -1011,6 +978,15 @@ JSON API服务器可以选择性支持，遵循JSON Patch规范[[RFC6902](http:/
 
 `PATCH`操作可以在API的根URL使用。此时，`PATCH`操作的`"path"`必须包含完整的资源URL。API表示的任意资源都可以进行常规的"fire hose"更新。如上所述，服务器可能会限制类型，排序和批量操作数量。
 
+
+
+<hr/>
+
+### 不要
+
+
+
+
 ### 创建资源with PATCH <a href="#patch-creating" id="patch-creating" class="headerlink"></a>
 
 要创建资源，执行`"add"`操作， `"path"`指向对应资源集合的末尾 (`"/-"`)。`"value"`必须包含一个资源对象。
@@ -1023,9 +999,9 @@ Content-Type: application/json-patch+json
 Accept: application/json
 
 [
-  { 
-    "op": "add", 
-    "path": "/-", 
+  {
+    "op": "add",
+    "path": "/-",
     "value": {
       "title": "Ember Hamster",
       "src": "http://example.com/images/productivity.png"
@@ -1085,9 +1061,9 @@ PATCH /article/1/links/author
 Content-Type: application/json-patch+json
 
 [
-  { 
-    "op": "remove", 
-    "path": "/" 
+  {
+    "op": "remove",
+    "path": "/"
   }
 ]
 ```
@@ -1127,9 +1103,9 @@ PATCH /photos/1/links/comments
 Content-Type: application/json-patch+json
 
 [
-  { 
-    "op": "add", 
-    "path": "/-", 
+  {
+    "op": "add",
+    "path": "/-",
     "value": "30"
   }
 ]
@@ -1144,9 +1120,9 @@ PATCH /photos/1/links/comments
 Content-Type: application/json-patch+json
 
 [
-  { 
-    "op": "remove", 
-    "path": "/5" 
+  {
+    "op": "remove",
+    "path": "/5"
   }
 ]
 ```
@@ -1163,7 +1139,7 @@ Content-Type: application/json-patch+json
 Accept: application/vnd.api+json
 
 [
-  { 
+  {
     "op": "remove",
     "path": "/"
   }
@@ -1190,17 +1166,17 @@ Content-Type: application/json-patch+json
 Accept: application/json
 
 [
-  { 
-    "op": "add", 
-    "path": "/-", 
+  {
+    "op": "add",
+    "path": "/-",
     "value": {
       "title": "Ember Hamster",
       "src": "http://example.com/images/productivity.png"
     }
   },
-  { 
-    "op": "add", 
-    "path": "/-", 
+  {
+    "op": "add",
+    "path": "/-",
     "value": {
       "title": "Mustaches on a Stick",
       "src": "http://example.com/images/mustaches.png"
@@ -1238,7 +1214,7 @@ Content-Type: application/json
 
 服务器可以选择在第一个问题出现时，立刻终止`PATCH` 操作，或者继续执行，遇到多个问题。例如，服务器可能多属性更新，然后返回在一个响应里返回多个校验问题。
 
-当服务器单个请求遇到多个问题，响应中应该指定最通用可行的HTTP错误码。例如，`400 Bad Request`适用于多个4xx errors，`500 Internal Server Error`适用于多个5xx errors。 
+当服务器单个请求遇到多个问题，响应中应该指定最通用可行的HTTP错误码。例如，`400 Bad Request`适用于多个4xx errors，`500 Internal Server Error`适用于多个5xx errors。
 
 服务器可能会返回与每个操作对应的错误对象。服务器需要指定`Content-Type:application/json`头，响应体必须包含JSON对象数组，每个对象必须遵循JSON API媒体类型 (`application/vnd.api+json`)。数组中的响应对象，必须是有序，且与请求文档中的操作相对应。每个响应对象应该仅包含error对象，当错误发生时，没有操作会完全成功。每个特定操作的错误码，应该在每个error对象 `"status"` 元素反映。
 
