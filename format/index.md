@@ -642,7 +642,7 @@ GET /posts?include=author&sort[posts]=-created,title&sort[people]=name
 
 ## 创建，更新，删除资源 <a href="#crud" id="crud" class="headerlink"></a>
 
-服务器可能支持资源获取，创建，更新和删除。
+服务器可能支持给定类型资源的创建，服务器也可能允许已存在资源的更新和删除。
 
 服务器允许单次请求，更新多个资源，如下所述。多个资源更新必须完全成功或者失败，不允许部分更新成功。
 
@@ -650,65 +650,75 @@ GET /posts?include=author&sort[posts]=-created,title&sort[people]=name
 
 ### 创建资源 <a href="#crud-creating-resources" id="crud-creating-resources" class="headerlink"></a>
 
-支持资源创建的服务器，必须支持创建单独的资源，可以选择性支持一次请求，创建多个资源。
 
 向表示待创建资源所属资源集的URL，发出`POST`请求，创建一个或多个资源。
-
-#### 创建单独资源 <a href="#crud-creating-individual-resources" id="crud-creating-individual-resources" class="headerlink"></a>
-
-创建单独资源的请求必须包含单一主要资源对象。
+请求必须包含单一资源对象作为主数据。资源对象必须包含至少一个`type`成员。
 
 例如，新photo可以通过如下请求创建：
 
 ```javascript
-POST /photos
+POST /photos HTTP/1.1
 Content-Type: application/vnd.api+json
 Accept: application/vnd.api+json
 
 {
-  "photos": {
-    "title": "Ember Hamster",
-    "src": "http://example.com/images/productivity.png"
+  "data": {
+    "type": "photos",
+    "attributes": {
+      "title": "Ember Hamster",
+      "src": "http://example.com/images/productivity.png"
+    },
+    "relationships": {
+      "photographer": {
+        "data": { "type": "people", "id": "9" }
+      }
+    }
+  }
+}
+```
+如果资源对象在`relationships`提供了关系,它的值必须是一个有`data`成员的关系对象。
+这个键的值代表新资源将要有的连接。
+
+#### 客户端生成的ID <a href="#crud-client-generated-ids" id="crud-client-generated-ids" class="headerlink"></a>
+
+服务器可能接受创建资源的请求中有客户端生成的ID。ID必须被`id`键指定,它的值必须是通用唯一识别码。
+客户端应该使用 RGC4122 [`RGC4122`](http://tools.ietf.org/html/draft-ietf-
+httpbis-p2-semantics-22#section-6.3)中描述的合适的UUID。
+
+比如:
+
+```javascript
+POST /photos HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": {
+    "type": "photos",
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "attributes": {
+      "title": "Ember Hamster",
+      "src": "http://example.com/images/productivity.png"
+    }
   }
 }
 ```
 
-#### 创建多个资源 <a href="#crud-creating-multiple-resources" id="crud-creating-multiple-resources" class="headerlink"></a>
+服务器必须对不支持的带有客户端生成ID的创建请求返回`403 Forbidden`。
 
-创建多个资源的请求必须包含主要主要资源集合。
-
-例如，多个photos通过如下请求创建：
-
-```javascript
-POST /photos
-Content-Type: application/vnd.api+json
-Accept: application/vnd.api+json
-
-{
-  "photos": [{
-    "title": "Ember Hamster",
-    "src": "http://example.com/images/productivity.png"
-  }, {
-    "title": "Mustaches on a Stick",
-    "src": "http://example.com/images/mustaches.png"
-  }]
-}
-```
 
 #### 响应 <a href="#crud-creating-responses" id="crud-creating-responses" class="headerlink"></a>
 
-##### 201 状态码 <a href="#crud-creating-responses-201" id="crud-creating-responses-201" class="headerlink"></a>
+##### 201 Created <a href="#crud-creating-responses-201" id="crud-creating-responses-201" class="headerlink"></a>
 
-服务器依据[`HTTP semantics`](http://tools.ietf.org/html/draft-ietf-
-httpbis-p2-semantics-22#section-6.3)规范，响应成功的资源创建请求。
+如果`POST`请求不包括客户端生成的ID,并且请求的资源成功被创建,服务器必须返回`201 Created`状态码。
 
-当一个或多个资源创建成功，服务器返回`201 Created`状态码。
+响应应该包含`Location`头，用以标示请求创建所有资源的位置。
 
-响应必须包含`Location`头，用以标示请求创建所有资源的位置。
+响应必须含有一个文档，用以存储所创建的主要资源。
 
-如果创建了单个资源，且资源对象包含`href`键，`Location` URL必须匹配`href`值。
-
-响应必须含有一个文档，用以存储所创建的主要资源。如果缺失，客户端则判定资源创建时，传输的文档未经修改。
+如果响应返回的资源对象在`links`成员里包含`self`键,并且响应数据头提供了`Location`,
+那么`self`的值必须匹配`Location`的值。
 
 ```javascript
 HTTP/1.1 201 Created
@@ -716,38 +726,52 @@ Location: http://example.com/photos/550e8400-e29b-41d4-a716-446655440000
 Content-Type: application/vnd.api+json
 
 {
-  "photos": {
+  "data": {
+    "type": "photos",
     "id": "550e8400-e29b-41d4-a716-446655440000",
-    "href": "http://example.com/photos/550e8400-e29b-41d4-a716-446655440000",
-    "title": "Ember Hamster",
-    "src": "http://example.com/images/productivity.png"
+    "attributes": {
+      "title": "Ember Hamster",
+      "src": "http://example.com/images/productivity.png"
+    },
+    "links": {
+      "self": "http://example.com/photos/550e8400-e29b-41d4-a716-446655440000"
+    }
   }
 }
 ```
 
-##### 其它响应 <a href="#crud-creating-responses-other" id="crud-creating-responses-other" class="headerlink"></a>
+##### 202 Accepted <a href="#crud-creating-responses-202" id="crud-creating-responses-202" class="headerlink"></a>
 
-服务器可能使用其它HTTP错误状态码反映错误。客户端必须依据HTTP规范处理这些错误信息。如下所述，错误细节可能会一并返回。
+如果创建资源的请求被接受处理,但在服务器响应时处理并未完成,那么服务器必须返回`202 Accepted`状态码。
 
-#### 客户端生成 IDs <a href="#crud-creating-client-ids" id="crud-creating-client-ids" class="headerlink"></a>
+##### 204 No Content <a href="#crud-creating-responses-204" id="crud-creating-responses-204" class="headerlink"></a>
 
-请求创建一个或多个资源时，服务器可能接受客户端生成IDs。IDs必须使用`"id"`键来指定，其值必须正确生成，且为格式化的*UUID*。
+如果`POST`请求包括客户端生成的ID,并且请求的资源成功被创建,那么服务器必须返回`201 Created`状态码和响应文档(如上所述),
+,或者只返回`204 No Content`状态码,没有响应文档。
 
-例如：
+##### 403 Forbidden <a href="#crud-creating-responses-403" id="crud-creating-responses-403" class="headerlink"></a>
 
-```javascript
-POST /photos
-Content-Type: application/vnd.api+json
-Accept: application/vnd.api+json
+服务器可能向不支持的创建资源的请求返回`403 Forbidden`的响应。
 
-{
-  "photos": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "title": "Ember Hamster",
-    "src": "http://example.com/images/productivity.png"
-  }
-}
-```
+##### 404 Not Found <a href="#crud-creating-responses-404" id="crud-creating-responses-404" class="headerlink"></a>
+
+如果创建请求引用的相关资源不存在,服务器必须返回`404 Not Found`的响应。
+
+##### 409 Conflict <a href="#crud-creating-responses-409" id="crud-creating-responses-409" class="headerlink"></a>
+
+如果创建请求中,客户端生成的ID已经存在,服务器必须返回`409 Conflict`的响应。
+
+如果创建请求中,资源对象的`type`不在后端支持的类型里,服务器必须返回`409 Conflict`的响应。
+
+服务器应该在响应中包括错误详情和足够的信息以识别冲突原因。
+
+##### Other Responses <a href="#crud-creating-responses-other" id="crud-creating-responses-other" class="headerlink"></a>
+
+服务器响应可能没有状态码。
+
+服务器可能响应包括错误详情的错误响应。
+
+服务器与客户端必须依照HTTP的语义准备和解译响应。
 
 ### 更新资源 <a href="#crud-updating" id="crud-updating" class="headerlink"></a>
 
