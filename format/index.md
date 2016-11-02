@@ -939,9 +939,11 @@ Accept: application/vnd.api+json
 
 服务器与客户端必须依照HTTP的语义准备和解译响应。
 
-## Query Parameters
+## 查询参数 <a href="#query-parameters" id="query-parameters" class="headerlink"></a>
 
+查询参数必须遵守成员命名的规则,同时必须包含至少一个非a-z字符(U+0061 to U+007A)。推荐使用 U+002D HYPHEN-MINUS, “-“, U+005F LOW LINE, “_”, 或者大写字母(如: camelCasing)。
 
+如果服务器获取到不遵从以上命名规则的查询参数,并且不知道如何处理,那么服务器必须返回`400 Bad Request`。
 
 ## Errors <a href="#errors" id="errors" class="headerlink"></a>
 
