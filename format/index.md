@@ -888,6 +888,10 @@ Accept: application/vnd.api+json
 
 如果服务器接受更新,但在服务器响应时更新并未完成,那么服务器必须返回`202 Accepted`状态码。
 
+#### 204 No Content <a href="#crud-updating-responses-204" id="crud-updating-responses-204" class="headerlink"></a>
+
+如果更新成功，且服务器没有更新任何未提供的属性，那么服务器必须或者返回`204 No Content`状态码和响应文档,或者只返回`204 No Content`状态码,没有响应文档。
+
 #### 200 OK <a href="#crud-updating-responses-200" id="crud-updating-responses-200" class="headerlink"></a>
 
 如果服务器接受更新，但是在请求指定内容之外做了资源修改，必须响应`200 OK`以及更新的资源实例，像是向此URL发出`GET`请求。
@@ -895,14 +899,154 @@ Accept: application/vnd.api+json
 如果更新成功,客户端当前属性保持更新,并且服务器只响应最上层元数据,那么服务器必须返回`200 OK`状态码。
 这种情况下,服务器不能包括更新后的资源。
 
-#### 204 No Content <a href="#crud-updating-responses-204" id="crud-updating-responses-204" class="headerlink"></a>
-
-如果更新成功，且服务器没有更新任何未提供的属性，那么服务器必须或者返回`200 OK`状态码和响应文档,或者只返回`204 No Content`状态码,没有响应文档。
-
-
 #### 其它响应 <a href="#crud-updating-responses-other" id="crud-updating-responses-other" class="headerlink"></a>
 
-服务器使用其它HTTP错误状态码反映错误。客户端必须依据HTTP规范处理这些错误信息。如下所述，错误细节可能会一并返回。
+服务器使用其它HTTP错误状态码反映错误。
+客户端必须依据HTTP规范处理这些错误信息。
+如下所述，错误细节可能会一并返回。
+
+### 更新关联 <a href="#crud-updating-relationships" id="crud-updating-relationships" class="headerlink"></a>
+
+虽然关联可以通过资源被更新(如上所述),JSON API也支持单独通过`Relationship Links`更新关联。
+
+#### 更新To-One 关联 <a href="#crud-updating-toone-relationship" id="crud-updating-toone-relationship" class="headerlink"></a>
+
+`PATCH`请求必须包括上层名为`data`的成员,包括:
+
+相关新资源的资源表示对象
+
+或者
+
+`null`,用来删除关联。
+
+比如,下面的请求更新author关联:
+
+```javascript
+PATCH /articles/1/relationships/author HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": { "type": "people", "id": "12" }
+}
+```
+
+而下面的请求会清除author关联:
+
+```javascript
+PATCH /articles/1/relationships/author HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": null
+}
+```
+
+如果关联被成功更新,服务器必须返回一个成功的响应。
+
+#### 更新To-Many 关联 <a href="#crud-updating-tomany-relationship" id="crud-updating-tomany-relationship" class="headerlink"></a>
+
+对所有请求类型,主体必须包括一个`data`成员,其值是一个空数组,或是一个`资源标识对象`的数组。
+
+如果客户端向一个to-many关联连接的URL发出`PATCH`请求,服务器必须或者完全更改关联的每一个成员,
+如果资源不存在或者无法使用,返回合适的错误状态码,如果服务器不允许完全更改,则返回`403 Forbidden`。
+
+比如,下面的请求会更改所有的`tag`:
+
+```javascript
+PATCH /articles/1/relationships/tags HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": [
+    { "type": "tags", "id": "2" },
+    { "type": "tags", "id": "3" }
+  ]
+}
+```
+
+而下面的请求会清除所有的`tag`:
+
+```javascript
+PATCH /articles/1/relationships/tags HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": []
+}
+```
+
+如果客户端向一个关联连接的URL发出`POST`请求,那么服务器必须向关联添加新增的成员,
+除非他们已经存在。如果所给的`type`和`id`已经存在,服务器不能再添加他们。
+
+如果所有指定的资源都可以被添加到关联,或者已经存在在关联里,那么服务器必须返回一个成功响应。
+
+在下面的例子中,ID为`123`的评论被添加到评论列表内ID为`1`的条目中。
+
+```javascript
+POST /articles/1/relationships/comments HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": [
+    { "type": "comments", "id": "123" }
+  ]
+}
+```
+
+如果客户端向一个关联连接的URL发出`DELETE`请求,那么服务器必须在关联中删除指定的成员,或者返回`403 Forbidden`响应。
+如果所有指定的资源都可以从关联中删除,或者未存在在关联中,那么服务器必须返回一个成功响应。
+
+关联成员是被与`POST`请求同样的方式指定的。
+
+在下面的例子中,ID为`12`和`13`的评论被从评论列表内ID为`1`的条目中删除:
+
+```javascript
+DELETE /articles/1/relationships/comments HTTP/1.1
+Content-Type: application/vnd.api+json
+Accept: application/vnd.api+json
+
+{
+  "data": [
+    { "type": "comments", "id": "12" },
+    { "type": "comments", "id": "13" }
+  ]
+}
+```
+### 响应 <a href="#crud-updating-relationship-responses" id="crud-updating-relationship-responses" class="headerlink"></a>
+
+#### 202 Accepted <a href="#crud-updating-relationship-responses-202" id="crud-updating-relationship-responses-202" class="headerlink"></a>
+
+如果服务器接受关联更新请求,但在服务器响应时更新并未完成,那么服务器必须返回`202 Accepted`状态码。
+
+#### 204 No Content <a href="#crud-updating-relationship-responses-204" id="crud-updating-relationship-responses-204" class="headerlink"></a>
+
+如果更新成功，并且请求中的资源与结果相符，那么服务器必须或者返回`204 No Content`状态码。
+
+#### 200 OK <a href="#crud-updating-relationship-responses-200" id="crud-updating-relationship-responses-200" class="headerlink"></a>
+
+如果服务器接受更新,但用在请求指定以外的方式更改了目标关联,那么b必须返回`200 OK`响应。
+响应文档必须包括被更新关联的代表。
+
+如果更新成功,客户端当前数据保持更新,并且服务器只响应最上层元数据,那么服务器必须返回`200 OK`状态码。
+这种情况下,服务器不能包括更新后的资源。
+
+#### 403 OK <a href="#crud-updating-relationship-responses-403" id="crud-updating-relationship-responses-403" class="headerlink"></a>
+
+服务器必须向不支持的更新关联请求发出`403 Forbidden`响应。
+
+#### 其它响应 <a href="#crud-updating-relationship-responses-other" id="crud-updating-relationship-responses-other" class="headerlink"></a>
+
+服务器可能使用其它HTTP错误状态码反映错误。
+
+服务器可能响应包括错误详情的错误响应。
+
+服务器与客户端必须依照HTTP的语义准备和解译响应。
+
 
 ### 资源删除 <a href="#crud-deleting" id="crud-deleting" class="headerlink"></a>
 
@@ -933,11 +1077,12 @@ Accept: application/vnd.api+json
 
 ##### 其它响应 <a href="#crud-deleting-responses-other" id="crud-deleting-responses-other" class="headerlink"></a>
 
-服务器使用其它HTTP错误状态码反映错误。
+服务器可能使用其它HTTP错误状态码反映错误。
 
 服务器可能响应包括错误详情的错误响应。
 
 服务器与客户端必须依照HTTP的语义准备和解译响应。
+
 
 ## 查询参数 <a href="#query-parameters" id="query-parameters" class="headerlink"></a>
 
@@ -945,7 +1090,18 @@ Accept: application/vnd.api+json
 
 如果服务器获取到不遵从以上命名规则的查询参数,并且不知道如何处理,那么服务器必须返回`400 Bad Request`。
 
-## Errors <a href="#errors" id="errors" class="headerlink"></a>
+
+## 错误 <a href="#errors" id="errors" class="headerlink"></a>
+
+#### 处理错误 <a href="#errors-processing-error" id="errors-processing-error" class="headerlink"></a>
+
+当遇到一个问题时,服务器可以选择停止处理,也可以继续处理,遇到多个问题。
+比如,服务器可能处理多个属性,并在一个响应中返回多个验证问题。
+
+当服务器在一个请求中遇到多个问题,在响应中应该使用HTTP最通用的错误状态码。
+比如,`400 Bad Request`可被用于多个4xx错误,`500 Internal Server Error`可被用于多个5xx错误。
+
+#### 错误对象 <a href="#errors-error-objects" id="errors-error-objects" class="headerlink"></a>
 
 错误对象是特殊化的资源对象，可能在响应中一并返回，用以提供执行操作遭遇问题的额外信息。在在JSON API文档顶层，`"errors"`对应值即为错误对象集合，此时文档不应该包含其它顶层资源。
 
